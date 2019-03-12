@@ -94,17 +94,36 @@ function CompressImage()
         const ctx = elem.getContext('2d');
         ctx.drawImage(img, 0, 0, elem.width, elem.height);
 
+        //toBlob polyfill
+        if( !HTMLCanvasElement.prototype.toBlob )
+        {
+          Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob',
+          {
+            value: function (callback, type, quality)
+            {
+              var dataURL = this.toDataURL(type, quality).split(',')[1];
+              setTimeout(function()
+              {
+                var binStr = atob( dataURL ),
+                    len = binStr.length,
+                    arr = new Uint8Array(len);
+                for (var i = 0; i < len; i++ )
+                {
+                  arr[i] = binStr.charCodeAt(i);
+                }
+                callback( new Blob( [arr], {type: type || 'image/' + type} ) );
+              });
+            }
+          });
+        }
+
         //Create the compressed file
         ctx.canvas.toBlob(function(blob)
         {
-          var compressedImage = new File(
-            [blob],
-            image.name,
-            {
-              type: image.type,
-              lastModified: Date.now()
-            }
-          );
+          var compressedImage = blob;
+          compressedImage.name = image.name;
+          compressedImage.type = image.type;
+          compressedImage.lastModified = Date.now();
 
           if(typeof success === "function")
           {
